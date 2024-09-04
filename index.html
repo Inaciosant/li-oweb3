@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Compras</title>
+</head>
+<body>
+    <h1>Minha Lista de Compras</h1>
+    <input type="text" id="novoItem" placeholder="Digite um item">
+    <button id="adicionarBtn">Adicionar</button>
+
+    <h2>Itens a Comprar:</h2>
+    <ul id="listaCompras"></ul>
+
+    <h2>Itens Comprados:</h2>
+    <ul id="listaComprados"></ul>
+
+    <script>
+        // Funções para interagir com o backend
+        const obterItens = () => fetch('/itens').then(res => res.json()); 
+        // Busca os itens no servidor
+
+        const adicionarItem = (nome) => fetch('/itens', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ nome, comprado: false }) 
+        });
+        // Adiciona um novo item
+
+        const atualizarItem = (id, comprado) => fetch(`/itens/${id}`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ comprado }) 
+        });
+        // Atualiza o status do item (comprado ou não)
+
+        const removerItem = (id) => fetch(`/itens/${id}`, { method: 'DELETE' }); 
+        // Remove um item
+
+        // Função para renderizar as listas
+        async function renderizarLista() {
+            const listaComprasUl = document.getElementById('listaCompras');
+            const listaCompradosUl = document.getElementById('listaComprados');
+            const itens = await obterItens(); // Obtém os itens do servidor
+
+            // Separar itens comprados e não comprados
+            const itensAComprar = itens.filter(item => !item.comprado);
+            const itensComprados = itens.filter(item => item.comprado);
+
+            // Renderiza a lista de itens a comprar
+            listaComprasUl.innerHTML = itensAComprar.map((item) => `
+                <li>
+                    ${item.nome}
+                    <button onclick="handleRemoverItem(${item.id})">Remover</button> 
+                    <button onclick="handleMarcarComoComprado(${item.id}, true)">Comprar</button>
+                </li>
+            `).join('');
+
+            // Renderiza a lista de itens comprados
+            listaCompradosUl.innerHTML = itensComprados.map((item) => `
+                <li>
+                    ${item.nome}
+                    <button onclick="handleRemoverItem(${item.id})">Remover</button>
+                </li>
+            `).join('');
+        }
+
+        // Função para remover um item
+        async function handleRemoverItem(id) {
+            try {
+                await removerItem(id);
+                await renderizarLista(); // Atualiza as listas após remover
+            } catch (error) {
+                console.error('Erro ao remover o item:', error);
+            }
+        }
+
+        // Função para marcar um item como comprado
+        async function handleMarcarComoComprado(id, comprado) {
+            try {
+                await atualizarItem(id, comprado);  // Atualiza o status de "comprado"
+                await renderizarLista();  // Atualiza as listas após a mudança
+            } catch (error) {
+                console.error('Erro ao atualizar o item:', error);
+            }
+        }
+
+        // Evento do botão "Adicionar"
+        document.getElementById('adicionarBtn').addEventListener('click', async () => {
+            const novoItemInput = document.getElementById('novoItem');
+            const novoItem = novoItemInput.value.trim(); 
+            if (novoItem) {
+                try {
+                    await adicionarItem(novoItem); 
+                    renderizarLista(); // Atualiza as listas após adicionar
+                    novoItemInput.value = ''; // Limpa o campo de entrada
+                } catch (error) {
+                    console.error('Erro ao adicionar o item:', error);
+                }
+            }
+        });
+
+        // Carrega a lista inicial ao carregar a página
+        window.onload = async () => { 
+            try {
+                renderizarLista(); 
+            } catch (error) {
+                console.error('Erro ao carregar as listas:', error); 
+            }
+        };
+    </script>
+</body>
+</html>
